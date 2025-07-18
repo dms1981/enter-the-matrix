@@ -1,19 +1,19 @@
 name: output-a-dynamic-matrix
 
-on:
+'on':
   pull_request:
     paths:
-      - 'terraform/workloads/**'
+      - terraform/workloads/**
   push:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   detect-changed-workloads:
     runs-on: ubuntu-latest
     outputs:
-      workloads-json: ${{ steps.changed.outputs.workloads-json }}
+      workloads-json: '${{ steps.changed.outputs.workloads-json }}'
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
@@ -29,10 +29,14 @@ jobs:
           if [ "$EVENT_NAME" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.sha }}"
             git fetch origin "$BASE_REF"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            BASE_REF="$(git rev-parse HEAD^)"
           else
             git fetch origin main
-            BASE_REF="origin/main"
+            BASE_REF="FETCH_HEAD"
           fi
+
+          echo "Using base ref: $BASE_REF"
 
           WORKLOADS=$(git diff --name-only "${BASE_REF}...HEAD" \
             | grep '^terraform/workloads/' \
@@ -46,6 +50,7 @@ jobs:
 
   use-matrix:
     needs: detect-changed-workloads
+    if: needs.detect-changed-workloads.outputs.workloads-json != '[]'
     runs-on: ubuntu-latest
     strategy:
       matrix:
