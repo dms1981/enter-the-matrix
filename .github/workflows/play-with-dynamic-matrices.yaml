@@ -1,0 +1,54 @@
+name: output-a-dynamic-matrix
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/workloads/**'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  detect-changed-workloads:
+    runs-on: ubuntu-latest
+    outputs:
+      workloads-json: ${{ steps.changed.outputs.workloads-json }}
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed workloads
+        id: changed
+        run: |
+          set -euo pipefail
+
+          EVENT_NAME="${{ github.event_name }}"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+            git fetch origin "$BASE_REF"
+          else
+            BASE_REF="origin/main"
+          fi
+
+          WORKLOADS=$(git diff --name-only "${BASE_REF}...HEAD" \
+            | grep '^terraform/workloads/' \
+            | cut -d/ -f3 \
+            | sort -u \
+            | jq -R -s -c 'split("\n") | map(select(length>0))'
+          )
+
+          echo "Detected workloads: $WORKLOADS"
+          echo "workloads-json=$WORKLOADS" >> "$GITHUB_OUTPUT"
+
+  use-matrix:
+    needs: detect-changed-workloads
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workload: ${{ fromJson(needs.detect-changed-workloads.outputs.workloads-json) }}
+    steps:
+      - name: Say hello
+        run: echo "Hello from ${{ matrix.workload }}"
