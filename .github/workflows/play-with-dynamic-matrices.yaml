@@ -55,14 +55,17 @@ jobs:
     strategy:
       matrix:
         workload: ${{ fromJson(needs.detect-changed-workloads.outputs.workloads-json) }}
-    env:
-      ACCOUNT_ID: ${{ 
-        matrix.workload == 'account_1' && secrets.ACCOUNT_1 || 
-        matrix.workload == 'account_2' && secrets.ACCOUNT_2 || 
-        matrix.workload == 'account_3' && secrets.ACCOUNT_3 || 
-        matrix.workload == 'account_4' && secrets.ACCOUNT_4
-      }}
     steps:
+      - name: Determine account ID from workload
+        id: set-account
+        run: |
+          case "${{ matrix.workload }}" in
+            account_1) echo "account_id=${{ secrets.ACCOUNT_1 }}" >> "$GITHUB_OUTPUT" ;;
+            account_2) echo "account_id=${{ secrets.ACCOUNT_2 }}" >> "$GITHUB_OUTPUT" ;;
+            account_3) echo "account_id=${{ secrets.ACCOUNT_3 }}" >> "$GITHUB_OUTPUT" ;;
+            account_4) echo "account_id=${{ secrets.ACCOUNT_4 }}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unknown workload: ${{ matrix.workload }}"; exit 1 ;;
+          esac
       - name: Say hello
         run: |
           echo "Hello from ${{ matrix.workload }}"
