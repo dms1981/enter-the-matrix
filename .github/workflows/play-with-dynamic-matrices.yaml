@@ -55,6 +55,17 @@ jobs:
     strategy:
       matrix:
         workload: ${{ fromJson(needs.detect-changed-workloads.outputs.workloads-json) }}
+    env:
+      ACCOUNT_MAP: >-
+        {
+          "account_1": "${{ secrets.ACCOUNT_1 }}",
+          "account_2": "${{ secrets.ACCOUNT_2 }}",
+          "account_3": "${{ secrets.ACCOUNT_3 }}",
+          "account_4": "${{ secrets.ACCOUNT_4 }}"
+        }
     steps:
       - name: Say hello
-        run: echo "Hello from ${{ matrix.workload }}"
+        run: |
+          echo "Hello from ${{ matrix.workload }}"
+          ACCOUNT_ID=${{ fromJson(env.ACCOUNT_MAP)[matrix.workload] }}
+          echo "I'm going to leak this secret value: $ACCOUNT_ID"
