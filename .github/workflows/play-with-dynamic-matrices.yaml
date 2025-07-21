@@ -55,18 +55,17 @@ jobs:
     strategy:
       matrix:
         workload: ${{ fromJson(needs.detect-changed-workloads.outputs.workloads-json) }}
+        include:
+          - workload: account_1
+            secret_name: ACCOUNT_1
+          - workload: account_2
+            secret_name: ACCOUNT_2
+          - workload: account_3
+            secret_name: ACCOUNT_3
+          - workload: account_4
+            secret_name: ACCOUNT_4
     steps:
-      - name: Determine account ID from workload
-        id: set-account
-        run: |
-          case "${{ matrix.workload }}" in
-            account_1) echo "ACCOUNT_ID=${{ secrets.ACCOUNT_1 }}" >> "$GITHUB_OUTPUT" ;;
-            account_2) echo "ACCOUNT_ID=${{ secrets.ACCOUNT_2 }}" >> "$GITHUB_OUTPUT" ;;
-            account_3) echo "ACCOUNT_ID=${{ secrets.ACCOUNT_3 }}" >> "$GITHUB_OUTPUT" ;;
-            account_4) echo "ACCOUNT_ID=${{ secrets.ACCOUNT_4 }}" >> "$GITHUB_OUTPUT" ;;
-            *) echo "Unknown workload: ${{ matrix.workload }}"; exit 1 ;;
-          esac
       - name: Say hello
         run: |
           echo "Hello from ${{ matrix.workload }}"
-          echo "I'm going to leak this secret value: $ACCOUNT_ID"
+          echo "I'm going to leak the ${{ matrix.secret_name }} secret value: ${{ secrets[matrix.secret_name] }}"
