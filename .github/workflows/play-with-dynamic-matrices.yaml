@@ -88,5 +88,5 @@ jobs:
           secret_value="${!secret_ref}"
 
           echo "Workload: ${{ matrix.workload }}"
-          echo "Secret Name: $secret_ref"
-          echo "Secret Value (masked): ${secret_value:0:3}***"
+          echo "This is for workload: $secret_ref"
+          echo "Now, let's see that secret: $secret_value"
