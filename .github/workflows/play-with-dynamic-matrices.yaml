@@ -18,7 +18,15 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     env:
-      WORKLOAD_TO_SECRET_MAPPING: '{"account-1":"ACCOUNT_1","account-2":"ACCOUNT_2","account-3":"ACCOUNT_3","account-4":"ACCOUNT_4","my-production-app":"AWS_MY_PRODUCTION_APP_ACCOUNT_ID","my-other-app":"AWS_MY_OTHER_APP_ACCOUNT_ID"}'
+      WORKLOAD_TO_SECRET_MAPPING: >
+        {
+          "account-1": "ACCOUNT_1",
+          "account-2": "ACCOUNT_2",
+          "account-3": "ACCOUNT_3",
+          "account-4": "ACCOUNT_4",
+          "my-production-app": "AWS_MY_PRODUCTION_APP_ACCOUNT_ID",
+          "my-other-app": "AWS_MY_OTHER_APP_ACCOUNT_ID"
+        }
 
     steps:
       - name: Checkout full history
