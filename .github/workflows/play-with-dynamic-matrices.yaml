@@ -48,22 +48,31 @@ jobs:
           echo "Detected workloads: $WORKLOADS"
           echo "workloads-json=$WORKLOADS" >> "$GITHUB_OUTPUT"
 
-  use-matrix:
+  build-matrix:
     needs: detect-changed-workloads
-    if: needs.detect-changed-workloads.outputs.workloads-json != '[]'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Build matrix with secret names
+        id: build
+        run: |
+          echo "Generating matrix from workloads..."
+          workloads='${{ needs.detect-changed-workloads.outputs.workloads-json }}'
+          matrix=$(echo "$workloads" | jq -c 'map({workload: ., secret_name: (ascii_upcase | gsub("ACCOUNT_"; "") | "ACCOUNT_" + (. | split("_")[-1]))})')
+          echo "Generated matrix: $matrix"
+          echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
+
+  use-matrix:
+    needs: build-matrix
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        workload: ${{ fromJson(needs.detect-changed-workloads.outputs.workloads-json) }}
-        include:
-          - workload: account_1
-            secret_name: ACCOUNT_1
-          - workload: account_2
-            secret_name: ACCOUNT_2
-          - workload: account_3
-            secret_name: ACCOUNT_3
-          - workload: account_4
-            secret_name: ACCOUNT_4
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+    env:
+      ACCOUNT_1: ${{ secrets.ACCOUNT_1 }}
+      ACCOUNT_2: ${{ secrets.ACCOUNT_2 }}
+      ACCOUNT_3: ${{ secrets.ACCOUNT_3 }}
+      ACCOUNT_4: ${{ secrets.ACCOUNT_4 }}
     steps:
       - name: Say hello
         run: |
