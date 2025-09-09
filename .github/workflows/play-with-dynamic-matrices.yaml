@@ -1,33 +1,19 @@
 name: output-a-dynamic-matrix
 
-on:
+'on':
   pull_request:
     paths:
-      - 'terraform/workloads/**'
+      - terraform/workloads/**
   push:
     branches:
       - main
-    paths:
-      - 'terraform/workloads/**'
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
-  generate-matrix:
+  detect-changed-workloads:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-
-    env:
-      WORKLOAD_TO_SECRET_MAPPING: >
-        {
-          "account-1": "ACCOUNT_1",
-          "account-2": "ACCOUNT_2",
-          "account-3": "ACCOUNT_3",
-          "account-4": "ACCOUNT_4",
-          "my-production-app": "AWS_MY_PRODUCTION_APP_ACCOUNT_ID",
-          "my-other-app": "AWS_MY_OTHER_APP_ACCOUNT_ID"
-        }
-
+      workloads-json: '${{ steps.changed.outputs.workloads-json }}'
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
@@ -59,42 +45,16 @@ jobs:
             | jq -R -s -c 'split("\n") | map(select(length>0))'
           )
 
+          echo "Detected workloads: $WORKLOADS"
           echo "workloads-json=$WORKLOADS" >> "$GITHUB_OUTPUT"
 
-      - name: Create job matrix from changed workloads
-        id: set-matrix
-        run: |
-          changed_dirs='${{ steps.changed.outputs.workloads-json }}'
-
-          matrix=$(echo "$changed_dirs" | jq -c --argjson map "$WORKLOAD_TO_SECRET_MAPPING" '
-            map(select($map[.] != null) | {workload: ., secret_name: $map[.]})
-          ')
-
-          echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
-
-  deploy-workload:
-    if: needs.generate-matrix.outputs.matrix != '{"include":[]}'
-    needs: generate-matrix
+  use-matrix:
+    needs: detect-changed-workloads
+    if: needs.detect-changed-workloads.outputs.workloads-json != '[]'
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-
-    env:
-      ACCOUNT_1: ${{ secrets.ACCOUNT_1 }}
-      ACCOUNT_2: ${{ secrets.ACCOUNT_2 }}
-      ACCOUNT_3: ${{ secrets.ACCOUNT_3 }}
-      ACCOUNT_4: ${{ secrets.ACCOUNT_4 }}
-      AWS_MY_PRODUCTION_APP_ACCOUNT_ID: ${{ secrets.AWS_MY_PRODUCTION_APP_ACCOUNT_ID }}
-      AWS_MY_OTHER_APP_ACCOUNT_ID: ${{ secrets.AWS_MY_OTHER_APP_ACCOUNT_ID }}
-
+      matrix:
+        workload: ${{ fromJson(needs.detect-changed-workloads.outputs.workloads-json) }}
     steps:
-      - name: Deploy workload ${{ matrix.workload }}
-        run: |
-          set -euo pipefail
-
-          secret_ref="${{ matrix.secret_name }}"
-          secret_value="${!secret_ref}"
-
-          echo "Workload: ${{ matrix.workload }}"
-          echo "This is for workload: $secret_ref"
-          echo "Now, let's see that secret: $secret_value"
+      - name: Say hello
+        run: echo "Hello from ${{ matrix.workload }}"
